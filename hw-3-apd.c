@@ -463,11 +463,108 @@ int main(int argc, char *argv[])
      **/ 
     int rank;
     int number_of_processes;
-
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &number_of_processes);
 
+    if (rank == MASTER)
+    {
+      /**
+       *  Master process; it handles most of the work during the execution of the program
+       *  TODO: add program execution scheme here and in Readme 
+       *  
+       **/   
+
+       if (argc < 4)
+       {
+           printf("The process needs at least 3 parameters to be executed: \n\t input image - output image - filter / filters \n");
+           exit(1);
+       }
+       
+       int start_line;
+       int end_line;
+       char *input_file_name = argv[1];
+       char *output_file_name = argv[2];
+       
+       Image *input_image = read_image(input_file_name);
+       
+       for (int slave = 1; slave < number_of_processes; ++slave)
+       {
+           start_line = (slave * input_image -> height) / number_of_processes;
+           end_line = ((slave + 1) * input_image -> height) / number_of_processes;
+
+           /**
+            *  Wrap the whole image that is send with another line top and buttom
+            **/  
+           start_line--;
+           if (slave != number_of_processes - 1)
+           {
+               end_line++;
+           }
+
+           send_image(input_image, slave, start_line, end_line);
+       }
+
+       /**
+        *  The master process is also used to apply filters on a image if 
+        *  if is the single process and even there are a buch of slaves 
+        *  he will perform filtering the image to save time.
+        * 
+        **/ 
+
+        int start_line_master = 0;
+        int end_line_master = input_image -> height / number_of_processes;
+
+        if (end_line != input_image -> height)
+        {
+            end_line++;
+        }
+
+        for (int filter_index = 3; filter_index < argc; ++filter_index)
+        {
+            apply_filter(input_image, get_filter_by_name(argv[filter_index]), start_line, end_line);
+        }
+
+        /**
+         * TODO: verify if there is a need in sending the last computed line to the next process and 
+         *      receive the last computed line from the previus process
+         *  Se mai aduaga ceva in plus si in slave
+         **/
+
+        for (int slave = 1; slave < number_of_processes; ++slave)
+        {
+            start_line = (slave * input_image -> height) / number_of_processes;
+            end_line = ((slave + 1) * input_image -> height) / number_of_processes;
+            
+            Image *received_image  = receive_image(slave);
+            for (int line = start_line; line < end_line; ++line)
+            {
+                if (input_image -> type == PGM)
+                {
+                    input_image -> image[line] = received_image -> image[line];
+                }
+                
+            }
+        }
+
+        write_image(input_image, output_file_name);        
+
+    }
+    else
+    {
+        /**
+         *  Slave process
+         **/ 
+        
+        Image *slave_image = receive_image(MASTER);
+
+        for (int filter_index = 3; filter_index < argc; ++filter_index)
+        {
+            apply_filter(slave_image, get_filter_by_name(argv[filter_index]), 0, slave_image -> height);
+        }
+        
+    }
+    
     
     MPI_Finalize();
     return 0;
