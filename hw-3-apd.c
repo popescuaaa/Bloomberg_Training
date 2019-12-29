@@ -51,8 +51,7 @@ typedef struct
  **/ 
 const filter smooth = 
 {
-    _name = "smooth",
-    _values = 
+    "smooth", 
     {
         { 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0},
         { 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0},
@@ -62,8 +61,7 @@ const filter smooth =
 
 const filter aproximative_gaussian_blur = 
 {
-    _name = "blur",
-    _values = 
+    "blur", 
     {
         { 1.0 / 16.0, 2.0 / 16.0, 1.0 / 16.0},
         { 2.0 / 16.0, 4.0 / 16.0, 2.0 / 16.0},
@@ -73,8 +71,7 @@ const filter aproximative_gaussian_blur =
 
 const filter sharpen = 
 {
-    _name = "sharpen",
-    _values = 
+    "sharpen",
     {
         { 0.0, -2.0 / 3.0, 0.0},
         { -2.0 / 3.0, 11.0 / 3.0, -2.0 / 3.0},
@@ -84,8 +81,7 @@ const filter sharpen =
 
 const filter mean_removal = 
 {
-    _name = "mean",
-    _values = 
+    "mean",
     {
         { -1.0, -1.0, -1.0},
         { -1.0, 9.0, -1.0},
@@ -95,8 +91,7 @@ const filter mean_removal =
 
 const filter embross =
 {
-    _name = "embross",
-    _values = 
+    "embross",
     {
         { 0.0, 1.0, 0.0},
         { 0.0, 0.0, 0.0},
@@ -106,8 +101,7 @@ const filter embross =
 
 const filter default_filter = 
 {
-    _name = "default",
-    _values = 
+    "default", 
     {
         { 0.0, 0.0, 0.0},
         { 0.0, 1.0, 0.0},
@@ -138,7 +132,7 @@ const filter get_filter_by_name(char *filter_name)
  * data from the indicated filename.
  * 
  **/ 
-Image read_image(char *image_file_name)
+Image *read_image(char *image_file_name)
 {
     FILE *fin = fopen(image_file_name, "rb");
     if(fin == NULL)
@@ -221,12 +215,12 @@ void write_image(Image *image, char *output_file_name)
         printf("The file can't be opened!\n");
         exit(1);
     }
-    unsigned char image_type[3];
+    unsigned char *image_type;
     unsigned char width[5];
     unsigned char height[5];
     unsigned char max_val[5];
-    unsigned char delimiter = " ";
-    unsigned char separator = "\n";
+    unsigned char delimiter = ' ';
+    unsigned char separator = '\n';
     sprintf(width, "%d", image -> width);
     sprintf(height, "%d", image -> height);
     sprintf(max_val, "%d", image -> max_val);
@@ -371,7 +365,7 @@ Image *receive_image(int source)
  *  for unsigned char values that goes above the max value.
  * 
  **/
-void apply_filter(Image *image, const filter, int start_line, int end_line)
+void apply_filter(Image *image, const filter current_filter, int start_line, int end_line)
 {
     Image *result = (Image *) malloc(sizeof(Image));
     result -> width = image -> width;
@@ -382,30 +376,99 @@ void apply_filter(Image *image, const filter, int start_line, int end_line)
     if (image -> type == PGM)
     {
          for (int line = start_line; line < end_line; ++line)
-        {
-            for (int column = 0; column < image -> width; ++colum)
+         {
+            for (int column = 0; column < image -> width; ++column)
             {
-                if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column > image -> width - 2))
+                if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column == image -> width - 1))
                 {
                     result -> image[line][column] = image -> image[line][column]; 
                 }
                 else
                 {
-                    
+                     result -> image[line][column] =
+                       current_filter.values[0][0] * image -> image[line - 1][column - 1] +
+                       current_filter.values[0][1] * image -> image[line - 1][column] +
+                       current_filter.values[0][2] * image -> image[line - 1][column + 1] +
+                       current_filter.values[1][0] * image -> image[line][column - 1] +
+                       current_filter.values[1][1] * image -> image[line][column] +
+                       current_filter.values[1][2] * image -> image[line][column + 1] +
+                       current_filter.values[2][0] * image -> image[line + 1][column - 1] +
+                       current_filter.values[2][1] * image -> image[line + 1][column] +
+                       current_filter.values[2][2] * image -> image[line + 1][column + 1];
+
+                     image -> image[line][column] = result -> image[line][column];
                 }   
             }
-        }
+         }
     }
     else
     {
-        
+        for (int line = start_line; line < end_line; ++line)
+         {
+            for (int column = 0; column < image -> width; ++column)
+            {
+                if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column == image -> width - 1))
+                {
+                    result -> color_image[line][column] = image -> color_image[line][column]; 
+                }
+                else
+                {
+                     result -> color_image[line][column].red =
+                       current_filter.values[0][0] * image -> color_image[line - 1][column - 1].red +
+                       current_filter.values[0][1] * image -> color_image[line - 1][column].red +
+                       current_filter.values[0][2] * image -> color_image[line - 1][column + 1].red +
+                       current_filter.values[1][0] * image -> color_image[line][column - 1].red +
+                       current_filter.values[1][1] * image -> color_image[line][column].red +
+                       current_filter.values[1][2] * image -> color_image[line][column + 1].red +
+                       current_filter.values[2][0] * image -> color_image[line + 1][column - 1].red +
+                       current_filter.values[2][1] * image -> color_image[line + 1][column].red +
+                       current_filter.values[2][2] * image -> color_image[line + 1][column + 1].red;
+
+                    result -> color_image[line][column].green =
+                       current_filter.values[0][0] * image -> color_image[line - 1][column - 1].green +
+                       current_filter.values[0][1] * image -> color_image[line - 1][column].green +
+                       current_filter.values[0][2] * image -> color_image[line - 1][column + 1].green +
+                       current_filter.values[1][0] * image -> color_image[line][column - 1].green +
+                       current_filter.values[1][1] * image -> color_image[line][column].green +
+                       current_filter.values[1][2] * image -> color_image[line][column + 1].green +
+                       current_filter.values[2][0] * image -> color_image[line + 1][column - 1].green +
+                       current_filter.values[2][1] * image -> color_image[line + 1][column].green +
+                       current_filter.values[2][2] * image -> color_image[line + 1][column + 1].green;
+
+                    result -> color_image[line][column].blue =
+                       current_filter.values[0][0] * image -> color_image[line - 1][column - 1].blue +
+                       current_filter.values[0][1] * image -> color_image[line - 1][column].blue +
+                       current_filter.values[0][2] * image -> color_image[line - 1][column + 1].blue +
+                       current_filter.values[1][0] * image -> color_image[line][column - 1].blue +
+                       current_filter.values[1][1] * image -> color_image[line][column].blue +
+                       current_filter.values[1][2] * image -> color_image[line][column + 1].blue +
+                       current_filter.values[2][0] * image -> color_image[line + 1][column - 1].blue +
+                       current_filter.values[2][1] * image -> color_image[line + 1][column].blue +
+                       current_filter.values[2][2] * image -> color_image[line + 1][column + 1].blue;
+
+                    image -> color_image[line][column] = result -> color_image[line][column];
+                }   
+            }
+         }
     }
-    
+
+    free(result);
 }
 
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char *argv[])
+{   
+    /**
+     * Initialize variables for MPI API
+     **/ 
+    int rank;
+    int number_of_processes;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &number_of_processes);
+
     
+    MPI_Finalize();
     return 0;
 }
