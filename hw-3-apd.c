@@ -5,6 +5,9 @@
 
 #define PGM 5
 #define PNM 6
+#define DEFAULT_TAG 0
+#define MASTER 0
+
 /**
  *  Type definitions
  * 
@@ -115,7 +118,7 @@ const filter default_filter =
 /**
  * @param: filter_name 
  * The function return based on name, the associated filter struct.
- * 
+ * It handle also non-valid filter names.
  **/
 
 const filter get_filter_by_name(char *filter_name)
@@ -262,6 +265,47 @@ void write_image(Image *image, char *output_file_name)
     fclose(fout);
 
     printf("\t\nThe result image has been writen in the current folder: %s\n", output_file_name);
+}
+
+/**
+ *  The following functions repesent the API that handles the processes reposnse
+ *  and action to specific images, so basically the image processing parallel API.
+ * 
+ **/ 
+
+/**
+ * @param: image
+ * @param: destination
+ * @param: start
+ * @param: finish
+ * 
+ * Send unsing MPI a couple of lines from a image content to another process.
+ * Mainly used by master to scatter the matrix butr also by any slave process 
+ * that have to send the processed matrix back.
+ * The function send all data about the image and make no assumption for the 
+ * receiver.
+ **/
+void send_image(Image *image, int destination, int start, int finish)
+{
+    int _height = finish - start;
+    MPI_Send(&(image -> type), 1, MPI_INT, destination, DEFAULT_TAG, MPI_COMM_WORLD);
+    MPI_Send(&(image -> width), 1, MPI_INT, destination, DEFAULT_TAG, MPI_COMM_WORLD);
+    MPI_Send(&(_height), 1, MPI_INT, destination, DEFAULT_TAG, MPI_COMM_WORLD);
+    MPI_Send(&(image -> max_val), 1, MPI_INT, destination, DEFAULT_TAG, MPI_COMM_WORLD);
+    if (image -> type == PGM)
+    {
+        for (int line = start; line < finish; ++line)
+        {
+            MPI_Send(image -> image[line], image -> width, MPI_UNSIGNED_CHAR, destination, DEFAULT_TAG, MPI_COMM_WORLD);
+        }
+    } 
+    else
+    {
+         for (int line = start; line < finish; ++line)
+        {
+            MPI_Send(image -> color_image[line], 3 * image -> width, MPI_UNSIGNED_CHAR, destination, DEFAULT_TAG, MPI_COMM_WORLD);
+        }
+    }
 }
 
 
