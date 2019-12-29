@@ -308,10 +308,104 @@ void send_image(Image *image, int destination, int start, int finish)
     }
 }
 
+/**
+ * @param: source
+ * 
+ * Function that receive an image from a specified source.
+ * The function receives all the data previously send by the other function
+ * and make no assumption for the sender.
+ * He only receives a couple of lines send with the above function.
+ **/ 
+Image *receive_image(int source)
+{
+    Image *image = (Image *) malloc(sizeof(Image));
+    MPI_Recv(&(image -> type), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(&(image -> width), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(&(image -> height), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    MPI_Recv(&(image -> max_val), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+    if (image -> type == PGM)
+    {
+        unsigned char **content = (unsigned char **) malloc(image -> height * sizeof(unsigned char *));
+        for (int line  = 0; line < image -> height; ++line)
+        {
+            content[line] =  (unsigned char *) malloc (image -> width * sizeof(unsigned char));
+        }
+        
+        for (int line = 0; line < image -> height; ++line)
+        {
+            MPI_Recv(content[line], image -> width, MPI_UNSIGNED_CHAR, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
+        
+        image -> image = content;
+    
+    } 
+    else
+    {
+        pixel **rgb_content = (pixel **) malloc(image -> height * sizeof(pixel *));
+        for (int line = 0; line < image -> height; ++line)
+        {
+            rgb_content[line] =  (pixel *) malloc(image -> width * sizeof(pixel));
+        }
+
+        for (int line = 0; line < image -> height; ++line)
+        {
+            MPI_Recv(rgb_content[line], 3 * image -> width, MPI_UNSIGNED_CHAR, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);   
+        }
+
+        image -> color_image = rgb_content;
+    }
+    
+    return image;
+}
+/**
+ *  @param: image
+ *  @param: filter
+ *  @param: start_line -> in interval 0 - end_line
+ *  @param: end_line -> in interval 0 - height
+ * 
+ *  Apply a specific filter on an image in a region delimited by on height 
+ *  by start_line and end_line.
+ *  It also ensure that there is no overflow or underflow during the matrix
+ *  multiplication by clamping values to 0 for begative ones and to 255 
+ *  for unsigned char values that goes above the max value.
+ * 
+ **/
+void apply_filter(Image *image, const filter, int start_line, int end_line)
+{
+    Image *result = (Image *) malloc(sizeof(Image));
+    result -> width = image -> width;
+    result -> height = image -> height;
+    result -> type = image -> type;
+    result -> max_val = image -> max_val;
+    
+    if (image -> type == PGM)
+    {
+         for (int line = start_line; line < end_line; ++line)
+        {
+            for (int column = 0; column < image -> width; ++colum)
+            {
+                if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column > image -> width - 2))
+                {
+                    result -> image[line][column] = image -> image[line][column]; 
+                }
+                else
+                {
+                    
+                }   
+            }
+        }
+    }
+    else
+    {
+        
+    }
+    
+}
+
 
 int main(int argc, char const *argv[])
 {
     
     return 0;
 }
-
