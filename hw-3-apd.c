@@ -381,7 +381,7 @@ void apply_filter(Image *image, const filter current_filter, int start_line, int
             {
                 if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column == image -> width - 1))
                 {
-                    result -> image[line][column] = image -> image[line][column]; 
+                   // result -> image[line][column] = image -> image[line][column]; 
                 }
                 else
                 {
@@ -409,7 +409,7 @@ void apply_filter(Image *image, const filter current_filter, int start_line, int
             {
                 if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column == image -> width - 1))
                 {
-                    result -> color_image[line][column] = image -> color_image[line][column]; 
+                  //   result -> color_image[line][column] = image -> color_image[line][column]; 
                 }
                 else
                 {
