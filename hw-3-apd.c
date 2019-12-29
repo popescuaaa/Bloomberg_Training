@@ -5,7 +5,10 @@
 
 #define PGM 5
 #define PNM 6
-
+/**
+ *  Type definitions
+ * 
+ **/ 
 typedef struct 
 {
     unsigned char red;
@@ -30,6 +33,101 @@ typedef struct
     pixel **color_image;
 
 } Image;
+
+typedef struct 
+{
+    char name[50];
+    float values[3][3];
+
+} filter;
+
+
+/**
+ *  Const values
+ *  ~ Filters ~  
+ **/ 
+const filter smooth = 
+{
+    _name = "smooth",
+    _values = 
+    {
+        { 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0},
+        { 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0},
+        { 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0}
+    }
+};
+
+const filter aproximative_gaussian_blur = 
+{
+    _name = "blur",
+    _values = 
+    {
+        { 1.0 / 16.0, 2.0 / 16.0, 1.0 / 16.0},
+        { 2.0 / 16.0, 4.0 / 16.0, 2.0 / 16.0},
+        { 1.0 / 16.0, 2.0 / 16.0, 1.0 / 16.0}
+    }
+};
+
+const filter sharpen = 
+{
+    _name = "sharpen",
+    _values = 
+    {
+        { 0.0, -2.0 / 3.0, 0.0},
+        { -2.0 / 3.0, 11.0 / 3.0, -2.0 / 3.0},
+        { 0.0, -2.0 / 3.0, 0.0}
+    }
+};
+
+const filter mean_removal = 
+{
+    _name = "mean",
+    _values = 
+    {
+        { -1.0, -1.0, -1.0},
+        { -1.0, 9.0, -1.0},
+        { 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0}
+    }
+};
+
+const filter embross =
+{
+    _name = "embross",
+    _values = 
+    {
+        { 0.0, 1.0, 0.0},
+        { 0.0, 0.0, 0.0},
+        { 0.0, -1.0, 0.0}
+    }
+};
+
+const filter default_filter = 
+{
+    _name = "default",
+    _values = 
+    {
+        { 0.0, 0.0, 0.0},
+        { 0.0, 1.0, 0.0},
+        { 0.0, 0.0, 0.0}
+    }
+};
+
+/**
+ * @param: filter_name 
+ * The function return based on name, the associated filter struct.
+ * 
+ **/
+
+const filter get_filter_by_name(char *filter_name)
+{
+    if (strcmp(filter_name, "smooth") == 0) return smooth;
+    if (strcmp(filter_name, "blur") == 0) return aproximative_gaussian_blur;
+    if (strcmp(filter_name, "mean") == 0) return mean_removal;
+    if (strcmp(filter_name, "sharpen") == 0) return sharpen;
+    if (strcmp(filter_name, "embross") == 0) return embross;
+
+    return default_filter;
+}
 
 /**
  * @param: image_file_name
@@ -106,7 +204,12 @@ Image read_image(char *image_file_name)
     fclose(fin);
     return image;
 }
-
+/**
+ * @param: image
+ * @param: output_file_name
+ * Write the image in the file specified by name;
+ * 
+ **/ 
 void write_image(Image *image, char *output_file_name)
 {
     FILE *fout = fopen(output_file_name, "wb");
