@@ -135,6 +135,7 @@ const filter get_filter_by_name(char *filter_name)
 Image *read_image(char *image_file_name)
 {
     FILE *fin = fopen(image_file_name, "rb");
+    
     if(fin == NULL)
     {
         printf("The file can't be opened!\n");
@@ -365,13 +366,11 @@ Image *receive_image(int source)
  *  for unsigned char values that goes above the max value.
  * 
  **/
-void apply_filter(Image *image, const filter current_filter, int start_line, int end_line)
+Image *apply_filter(Image *image, const filter current_filter, int start_line, int end_line)
 {
+    
     Image *result = (Image *) malloc(sizeof(Image));
-    result -> width = image -> width;
-    result -> height = image -> height;
-    result -> type = image -> type;
-    result -> max_val = image -> max_val;
+    result = image;
     
     if (image -> type == PGM)
     {
@@ -381,7 +380,7 @@ void apply_filter(Image *image, const filter current_filter, int start_line, int
             {
                 if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column == image -> width - 1))
                 {
-                   // result -> image[line][column] = image -> image[line][column]; 
+                    result -> image[line][column] = image -> image[line][column]; 
                 }
                 else
                 {
@@ -409,7 +408,7 @@ void apply_filter(Image *image, const filter current_filter, int start_line, int
             {
                 if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column == image -> width - 1))
                 {
-                  //   result -> color_image[line][column] = image -> color_image[line][column]; 
+                     result -> color_image[line][column] = image -> color_image[line][column]; 
                 }
                 else
                 {
@@ -452,7 +451,7 @@ void apply_filter(Image *image, const filter current_filter, int start_line, int
          }
     }
 
-    free(result);
+    return result;
 }
 
 
@@ -522,7 +521,7 @@ int main(int argc, char *argv[])
 
         for (int filter_index = 3; filter_index < argc; ++filter_index)
         {
-            apply_filter(input_image, get_filter_by_name(argv[filter_index]), start_line, end_line);
+            input_image = apply_filter(input_image, get_filter_by_name(argv[filter_index]), start_line, end_line);
         }
 
         /**
@@ -546,8 +545,7 @@ int main(int argc, char *argv[])
                 
             }
         }
-
-        write_image(input_image, output_file_name);        
+       write_image(input_image, output_file_name);        
 
     }
     else
@@ -560,9 +558,10 @@ int main(int argc, char *argv[])
 
         for (int filter_index = 3; filter_index < argc; ++filter_index)
         {
-            apply_filter(slave_image, get_filter_by_name(argv[filter_index]), 0, slave_image -> height);
+           slave_image = apply_filter(slave_image, get_filter_by_name(argv[filter_index]), 0, slave_image -> height);
         }
-        
+
+        send_image(slave_image, MASTER, 0, slave_image -> height);
     }
     
     
