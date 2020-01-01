@@ -171,17 +171,15 @@ Image *read_image(char *image_file_name)
         /**
          *  Read black - white pixels
          **/ 
-        unsigned char **pgm_content = (unsigned char **) malloc ((image -> height) * sizeof(unsigned char *));
+        unsigned char **pgm_content = (unsigned char **) malloc (image -> height * sizeof(unsigned char *));
         for (int line = 0; line < image -> height; ++line)
         {
-            pgm_content[line] = (unsigned char *) malloc((image -> width) * sizeof(unsigned char));
+            pgm_content[line] = (unsigned char *) malloc(image -> width * sizeof(unsigned char));
         }
-
         for (int line  = 0; line < image -> height; ++line)
         {
             fread(pgm_content[line], sizeof(unsigned char), image -> width, fin);
         }
-
         image -> image = pgm_content;
     } 
     else 
@@ -373,130 +371,127 @@ Image *receive_image(int source)
  **/
 
 
-// Multiply 3x3 matrices element by element
-float multiplyMatrices(const float m1[3][3], unsigned char m2[3][3]) 
-{
-  float result = 0;
-  for (int i = 3; i > 0; i--)
-    for (int j = 0; j < 3; j++)
-      result += m1[i][j] * m2[i][j];
-  return result;
-}
-
-void apply_filter(Image *image, filter current_filter, int start_line, int end_line) 
-{
+void apply_filter(Image *img, filter current_filter, int start_line, int end_line) {
+  Image *result = img;
   
-  Image *result = image;
-  
-  int step = image->type == 5 ? 1 : 3;
-  int real_width = image->width * step;
-
-  for (int i = start_line; i < end_line; i++) 
+  if (img -> type == PGM)
   {
-    for (int j = 0; j < real_width - step; j++) 
-    {
-      
-    unsigned char **p = image->image;
-    unsigned char pixels[3][3] =
-        {{p[i - 1][j - step], p[i - 1][j], p[i - 1][j + step]},
+        for (int i = start_line; i < end_line; i++) 
+        {
+            for (int j = 0; j < img -> width; j++)
+            {
+               float result_pixel_value = 0.0;
 
-            {p[i][j - step], p[i][j], p[i][j + step]},
+               for (int offset_i = -1; offset_i <= 1; offset_i++)
+               {
+                   for(int offset_j = -1; offset_j <= 1; offset_j++)
+                   {
+                       if (i + offset_i == -1 || i + offset_i == img -> height ||
+                           j + offset_j == -1 || j + offset_j == img -> width)
+                        {
+                            result_pixel_value += 0;
+                        }
+                       else
+                        {
+                            float image_pixel = (float) img -> image[i + offset_i][j + offset_j];
+                            float filter_associated_value = current_filter.values[1 - offset_i][1 - offset_j];
+                            result_pixel_value += (image_pixel * filter_associated_value);  
+                        }
+                   }
+               }
 
-            {p[i + 1][j - step], p[i + 1][j], p[i + 1][j + step]}};
-
-    
-    result->image[i][j] = (unsigned char) (multiplyMatrices(current_filter.values, pixels));
+               
+                if (result_pixel_value > 255) 
+                    result_pixel_value = 255;
+                if (result_pixel_value < 0) 
+                    result_pixel_value = 0;
         
-      
-    }
+                result -> image[i][j] = (unsigned char) result_pixel_value;
+                
+            }   
+        }
+
+        for (int i = 0; i < img -> height; i++)
+        {
+            for (int j = 0; j < img -> width; j++)
+            {
+                img -> image[i][j] = result -> image[i][j];
+            }
+        }
+  } 
+  else 
+  {
+
   }
-
-  for (int i = 0; i < image->height; i++)
-    for (int j = 0; j < real_width - step; j++)
-      image->image[i][j] = result->image[i][j];
-
   
 }
+
 
 
 int main(int argc, char *argv[]) {
+
   int rank;
-  int nProcesses;
+  int number_of_processes;
+
   MPI_Init(&argc, &argv);
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &nProcesses);
+  MPI_Comm_size(MPI_COMM_WORLD, &number_of_processes);
 
-  if (rank == 0) {
+  if (rank == MASTER) {
+    
+    int start_line;
+    int end_line;
 
     if (argc < 4) {
-      printf(
-          "Usage: mpirun -np N ./%s Image_in.pnm Image_out.pnm filter1 filter2 ... filterX\n",
-          argv[0]);
+      printf("\n\t Please provide at least 3 arguments for the executable: \n\t mpirun -np P ./executable image_in image_out filter_1 filter_2 ...\n Although the executable stop working the lamboot background daemon will continue to work \n\t please end it with Ctrl + C\n");
       exit(-1);
     }
 
     Image *image = malloc(sizeof(Image));
-
     image = read_image(argv[1]);
+    
+    for (int i = 1; i < number_of_processes; i++) 
+    {
+      start_line = (i * image->height) / number_of_processes;
+      end_line = ((i + 1) * image->height) / number_of_processes;
 
-
-
-    int start_line, end_line;
-
-    // Send parts of the image to each of the other processes
-    for (int i = 1; i < nProcesses; i++) {
-      start_line = (i * image->height) / nProcesses;
-      end_line = ((i + 1) * image->height) / nProcesses;
-
-      // Add extra edge lines if they exist
       start_line -= 1;
-      if (i != nProcesses - 1)
+      if (i != number_of_processes - 1)
         end_line++;
 
       send_image(image, i, start_line, end_line);
     }
 
-    // Apply filters on the first part of the image
     start_line = 0;
-    end_line = image->height / nProcesses;
+    end_line = image->height / number_of_processes;
+
     if (end_line != image->height)
       end_line++;
-    for (int i = 3; i < argc; i++) {
+
+    for (int i = 3; i < argc; i++) 
+    {
       apply_filter(image, get_filter_by_name(argv[i]), start_line, end_line);
 
-      if (nProcesses > 1) {
-        int real_width = image->type == 5 ? image->width : image->width * 3;
-
-        // Send computed edge line to next process
-        MPI_Send(image->image[end_line - 2],
-                 real_width,
-                 MPI_UNSIGNED_CHAR,
-                 1,
-                 DEFAULT_TAG,
-                 MPI_COMM_WORLD);
-
-        // Receive computed edge line from next process
-        MPI_Recv(image->image[end_line - 1],
-                 real_width,
-                 MPI_UNSIGNED_CHAR,
-                 1,
-                 DEFAULT_TAG,
-                 MPI_COMM_WORLD,
-                 MPI_STATUS_IGNORE);
-      }
     }
 
-    // Receive data from all processes and reconstruct image
-    for (int i = 1; i < nProcesses; i++) {
-      start_line = (i * image->height) / nProcesses;
-      end_line = ((i + 1) * image->height) / nProcesses;
 
+    for (int i = 1; i < number_of_processes; i++) 
+    {
+
+      start_line = (i * image->height) / number_of_processes;
+      end_line = ((i + 1) * image->height) / number_of_processes;
+      
       Image *img = receive_image(i);
       free(img->image[0]);
-      for (int j = start_line; j < end_line; j++) {
+
+      for (int j = start_line; j < end_line; j++) 
+      {
+
         free(image->image[j]);
+
         image->image[j] = img->image[j - start_line + 1];
       }
+
       for (int j = end_line - start_line + 2; j < img->height; j++)
         free(img->image[j]);
 
@@ -505,56 +500,23 @@ int main(int argc, char *argv[]) {
     }
 
     write_image(image, argv[2]);
+
   } else {
-    // Receive image part from root process
+    
     Image *img = receive_image(0);
 
+    for (int i = 3; i < argc; i++) 
+    {
 
-    // Apply filters, updating the upper and lower edges each time if they exist
-    for (int i = 3; i < argc; i++) {
       apply_filter(img, get_filter_by_name(argv[i]), 0, img->height);
 
-      int real_width = img->type == 5 ? img->width : img->width * 3;
-
-      MPI_Recv(img->image[0],
-               real_width,
-               MPI_UNSIGNED_CHAR,
-               rank - 1,
-               DEFAULT_TAG,
-               MPI_COMM_WORLD,
-               MPI_STATUS_IGNORE);
-
-      MPI_Send(img->image[1],
-               real_width,
-               MPI_UNSIGNED_CHAR,
-               rank - 1,
-               DEFAULT_TAG,
-               MPI_COMM_WORLD);
-
-      if (rank != nProcesses - 1) {
-        MPI_Send(img->image[img->height - 2],
-                 real_width,
-                 MPI_UNSIGNED_CHAR,
-                 rank + 1,
-                 DEFAULT_TAG,
-                 MPI_COMM_WORLD);
-
-        MPI_Recv(img->image[img->height - 1],
-                 real_width, 
-                 MPI_UNSIGNED_CHAR,
-                 rank + 1,
-                 DEFAULT_TAG,
-                 MPI_COMM_WORLD,
-                 MPI_STATUS_IGNORE);
-      }
 
     }
 
-    // Send computed image part to root process
     send_image(img, 0, 0, img->height);
+    
   }
 
   MPI_Finalize();
   return 0;
 }
-
