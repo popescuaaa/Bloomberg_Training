@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <string.h>
+#include <unistd.h>
+
+
 
 #define PGM 5
 #define PNM 6
@@ -168,10 +171,10 @@ Image *read_image(char *image_file_name)
         /**
          *  Read black - white pixels
          **/ 
-        unsigned char **pgm_content = (unsigned char **) malloc (image -> height * sizeof(unsigned char *));
+        unsigned char **pgm_content = (unsigned char **) malloc ((image -> height) * sizeof(unsigned char *));
         for (int line = 0; line < image -> height; ++line)
         {
-            pgm_content[line] = (unsigned char *) malloc(image -> width * sizeof(unsigned char));
+            pgm_content[line] = (unsigned char *) malloc((image -> width) * sizeof(unsigned char));
         }
 
         for (int line  = 0; line < image -> height; ++line)
@@ -282,6 +285,7 @@ void write_image(Image *image, char *output_file_name)
  **/
 void send_image(Image *image, int destination, int start, int finish)
 {
+    printf("Send\n");
     int _height = finish - start;
     MPI_Send(&(image -> type), 1, MPI_INT, destination, DEFAULT_TAG, MPI_COMM_WORLD);
     MPI_Send(&(image -> width), 1, MPI_INT, destination, DEFAULT_TAG, MPI_COMM_WORLD);
@@ -313,6 +317,7 @@ void send_image(Image *image, int destination, int start, int finish)
  **/ 
 Image *receive_image(int source)
 {
+    printf("Received\n");
     Image *image = (Image *) malloc(sizeof(Image));
     MPI_Recv(&(image -> type), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     MPI_Recv(&(image -> width), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
@@ -366,205 +371,190 @@ Image *receive_image(int source)
  *  for unsigned char values that goes above the max value.
  * 
  **/
-Image *apply_filter(Image *image, const filter current_filter, int start_line, int end_line)
+
+
+// Multiply 3x3 matrices element by element
+float multiplyMatrices(const float m1[3][3], unsigned char m2[3][3]) 
 {
-    
-    Image *result = (Image *) malloc(sizeof(Image));
-    result = image;
-    
-    if (image -> type == PGM)
-    {
-         for (int line = start_line; line < end_line; ++line)
-         {
-            for (int column = 0; column < image -> width; ++column)
-            {
-                if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column == image -> width - 1))
-                {
-                    result -> image[line][column] = image -> image[line][column]; 
-                }
-                else
-                {
-                     result -> image[line][column] =
-                       current_filter.values[0][0] * image -> image[line - 1][column - 1] +
-                       current_filter.values[0][1] * image -> image[line - 1][column] +
-                       current_filter.values[0][2] * image -> image[line - 1][column + 1] +
-                       current_filter.values[1][0] * image -> image[line][column - 1] +
-                       current_filter.values[1][1] * image -> image[line][column] +
-                       current_filter.values[1][2] * image -> image[line][column + 1] +
-                       current_filter.values[2][0] * image -> image[line + 1][column - 1] +
-                       current_filter.values[2][1] * image -> image[line + 1][column] +
-                       current_filter.values[2][2] * image -> image[line + 1][column + 1];
-
-                     image -> image[line][column] = result -> image[line][column];
-                }   
-            }
-         }
-    }
-    else
-    {
-        for (int line = start_line; line < end_line; ++line)
-         {
-            for (int column = 0; column < image -> width; ++column)
-            {
-                if ( (line  == 0) || (column == 0) || (line == image -> height - 1) || (column == image -> width - 1))
-                {
-                     result -> color_image[line][column] = image -> color_image[line][column]; 
-                }
-                else
-                {
-                     result -> color_image[line][column].red =
-                       current_filter.values[0][0] * image -> color_image[line - 1][column - 1].red +
-                       current_filter.values[0][1] * image -> color_image[line - 1][column].red +
-                       current_filter.values[0][2] * image -> color_image[line - 1][column + 1].red +
-                       current_filter.values[1][0] * image -> color_image[line][column - 1].red +
-                       current_filter.values[1][1] * image -> color_image[line][column].red +
-                       current_filter.values[1][2] * image -> color_image[line][column + 1].red +
-                       current_filter.values[2][0] * image -> color_image[line + 1][column - 1].red +
-                       current_filter.values[2][1] * image -> color_image[line + 1][column].red +
-                       current_filter.values[2][2] * image -> color_image[line + 1][column + 1].red;
-
-                    result -> color_image[line][column].green =
-                       current_filter.values[0][0] * image -> color_image[line - 1][column - 1].green +
-                       current_filter.values[0][1] * image -> color_image[line - 1][column].green +
-                       current_filter.values[0][2] * image -> color_image[line - 1][column + 1].green +
-                       current_filter.values[1][0] * image -> color_image[line][column - 1].green +
-                       current_filter.values[1][1] * image -> color_image[line][column].green +
-                       current_filter.values[1][2] * image -> color_image[line][column + 1].green +
-                       current_filter.values[2][0] * image -> color_image[line + 1][column - 1].green +
-                       current_filter.values[2][1] * image -> color_image[line + 1][column].green +
-                       current_filter.values[2][2] * image -> color_image[line + 1][column + 1].green;
-
-                    result -> color_image[line][column].blue =
-                       current_filter.values[0][0] * image -> color_image[line - 1][column - 1].blue +
-                       current_filter.values[0][1] * image -> color_image[line - 1][column].blue +
-                       current_filter.values[0][2] * image -> color_image[line - 1][column + 1].blue +
-                       current_filter.values[1][0] * image -> color_image[line][column - 1].blue +
-                       current_filter.values[1][1] * image -> color_image[line][column].blue +
-                       current_filter.values[1][2] * image -> color_image[line][column + 1].blue +
-                       current_filter.values[2][0] * image -> color_image[line + 1][column - 1].blue +
-                       current_filter.values[2][1] * image -> color_image[line + 1][column].blue +
-                       current_filter.values[2][2] * image -> color_image[line + 1][column + 1].blue;
-
-                    image -> color_image[line][column] = result -> color_image[line][column];
-                }   
-            }
-         }
-    }
-
-    return result;
+  float result = 0;
+  for (int i = 3; i > 0; i--)
+    for (int j = 0; j < 3; j++)
+      result += m1[i][j] * m2[i][j];
+  return result;
 }
 
+void apply_filter(Image *image, filter current_filter, int start_line, int end_line) 
+{
+  
+  Image *result = image;
+  
+  int step = image->type == 5 ? 1 : 3;
+  int real_width = image->width * step;
 
-int main(int argc, char *argv[])
-{   
-    /**
-     * Initialize variables for MPI API
-     **/ 
-    int rank;
-    int number_of_processes;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &number_of_processes);
-
-    if (rank == MASTER)
+  for (int i = start_line; i < end_line; i++) 
+  {
+    for (int j = 0; j < real_width - step; j++) 
     {
-      /**
-       *  Master process; it handles most of the work during the execution of the program
-       *  TODO: add program execution scheme here and in Readme 
-       *  
-       **/   
+      
+    unsigned char **p = image->image;
+    unsigned char pixels[3][3] =
+        {{p[i - 1][j - step], p[i - 1][j], p[i - 1][j + step]},
 
-       if (argc < 4)
-       {
-           printf("The process needs at least 3 parameters to be executed: \n\t input image - output image - filter / filters \n");
-           exit(1);
-       }
-       
-       int start_line;
-       int end_line;
-       char *input_file_name = argv[1];
-       char *output_file_name = argv[2];
-       
-       Image *input_image = read_image(input_file_name);
-       
-       for (int slave = 1; slave < number_of_processes; ++slave)
-       {
-           start_line = (slave * input_image -> height) / number_of_processes;
-           end_line = ((slave + 1) * input_image -> height) / number_of_processes;
+            {p[i][j - step], p[i][j], p[i][j + step]},
 
-           /**
-            *  Wrap the whole image that is send with another line top and buttom
-            **/  
-           start_line--;
-           if (slave != number_of_processes - 1)
-           {
-               end_line++;
-           }
+            {p[i + 1][j - step], p[i + 1][j], p[i + 1][j + step]}};
 
-           send_image(input_image, slave, start_line, end_line);
-       }
-
-       /**
-        *  The master process is also used to apply filters on a image if 
-        *  if is the single process and even there are a buch of slaves 
-        *  he will perform filtering the image to save time.
-        * 
-        **/ 
-
-        int start_line_master = 0;
-        int end_line_master = input_image -> height / number_of_processes;
-
-        if (end_line != input_image -> height)
-        {
-            end_line++;
-        }
-
-        for (int filter_index = 3; filter_index < argc; ++filter_index)
-        {
-            input_image = apply_filter(input_image, get_filter_by_name(argv[filter_index]), start_line, end_line);
-        }
-
-        /**
-         * TODO: verify if there is a need in sending the last computed line to the next process and 
-         *      receive the last computed line from the previus process
-         *  Se mai aduaga ceva in plus si in slave
-         **/
-
-        for (int slave = 1; slave < number_of_processes; ++slave)
-        {
-            start_line = (slave * input_image -> height) / number_of_processes;
-            end_line = ((slave + 1) * input_image -> height) / number_of_processes;
-            
-            Image *received_image  = receive_image(slave);
-            for (int line = start_line; line < end_line; ++line)
-            {
-                if (input_image -> type == PGM)
-                {
-                    input_image -> image[line] = received_image -> image[line];
-                }
-                
-            }
-        }
-       write_image(input_image, output_file_name);        
-
-    }
-    else
-    {
-        /**
-         *  Slave process
-         **/ 
+    
+    result->image[i][j] = (unsigned char) (multiplyMatrices(current_filter.values, pixels));
         
-        Image *slave_image = receive_image(MASTER);
-
-        for (int filter_index = 3; filter_index < argc; ++filter_index)
-        {
-           slave_image = apply_filter(slave_image, get_filter_by_name(argv[filter_index]), 0, slave_image -> height);
-        }
-
-        send_image(slave_image, MASTER, 0, slave_image -> height);
+      
     }
-    
-    
-    MPI_Finalize();
-    return 0;
+  }
+
+  for (int i = 0; i < image->height; i++)
+    for (int j = 0; j < real_width - step; j++)
+      image->image[i][j] = result->image[i][j];
+
+  
 }
+
+
+int main(int argc, char *argv[]) {
+  int rank;
+  int nProcesses;
+  MPI_Init(&argc, &argv);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+  MPI_Comm_size(MPI_COMM_WORLD, &nProcesses);
+
+  if (rank == 0) {
+
+    if (argc < 4) {
+      printf(
+          "Usage: mpirun -np N ./%s Image_in.pnm Image_out.pnm filter1 filter2 ... filterX\n",
+          argv[0]);
+      exit(-1);
+    }
+
+    Image *image = malloc(sizeof(Image));
+
+    image = read_image(argv[1]);
+
+
+
+    int start_line, end_line;
+
+    // Send parts of the image to each of the other processes
+    for (int i = 1; i < nProcesses; i++) {
+      start_line = (i * image->height) / nProcesses;
+      end_line = ((i + 1) * image->height) / nProcesses;
+
+      // Add extra edge lines if they exist
+      start_line -= 1;
+      if (i != nProcesses - 1)
+        end_line++;
+
+      send_image(image, i, start_line, end_line);
+    }
+
+    // Apply filters on the first part of the image
+    start_line = 0;
+    end_line = image->height / nProcesses;
+    if (end_line != image->height)
+      end_line++;
+    for (int i = 3; i < argc; i++) {
+      apply_filter(image, get_filter_by_name(argv[i]), start_line, end_line);
+
+      if (nProcesses > 1) {
+        int real_width = image->type == 5 ? image->width : image->width * 3;
+
+        // Send computed edge line to next process
+        MPI_Send(image->image[end_line - 2],
+                 real_width,
+                 MPI_UNSIGNED_CHAR,
+                 1,
+                 DEFAULT_TAG,
+                 MPI_COMM_WORLD);
+
+        // Receive computed edge line from next process
+        MPI_Recv(image->image[end_line - 1],
+                 real_width,
+                 MPI_UNSIGNED_CHAR,
+                 1,
+                 DEFAULT_TAG,
+                 MPI_COMM_WORLD,
+                 MPI_STATUS_IGNORE);
+      }
+    }
+
+    // Receive data from all processes and reconstruct image
+    for (int i = 1; i < nProcesses; i++) {
+      start_line = (i * image->height) / nProcesses;
+      end_line = ((i + 1) * image->height) / nProcesses;
+
+      Image *img = receive_image(i);
+      free(img->image[0]);
+      for (int j = start_line; j < end_line; j++) {
+        free(image->image[j]);
+        image->image[j] = img->image[j - start_line + 1];
+      }
+      for (int j = end_line - start_line + 2; j < img->height; j++)
+        free(img->image[j]);
+
+      free(img->image);
+      free(img);
+    }
+
+    write_image(image, argv[2]);
+  } else {
+    // Receive image part from root process
+    Image *img = receive_image(0);
+
+
+    // Apply filters, updating the upper and lower edges each time if they exist
+    for (int i = 3; i < argc; i++) {
+      apply_filter(img, get_filter_by_name(argv[i]), 0, img->height);
+
+      int real_width = img->type == 5 ? img->width : img->width * 3;
+
+      MPI_Recv(img->image[0],
+               real_width,
+               MPI_UNSIGNED_CHAR,
+               rank - 1,
+               DEFAULT_TAG,
+               MPI_COMM_WORLD,
+               MPI_STATUS_IGNORE);
+
+      MPI_Send(img->image[1],
+               real_width,
+               MPI_UNSIGNED_CHAR,
+               rank - 1,
+               DEFAULT_TAG,
+               MPI_COMM_WORLD);
+
+      if (rank != nProcesses - 1) {
+        MPI_Send(img->image[img->height - 2],
+                 real_width,
+                 MPI_UNSIGNED_CHAR,
+                 rank + 1,
+                 DEFAULT_TAG,
+                 MPI_COMM_WORLD);
+
+        MPI_Recv(img->image[img->height - 1],
+                 real_width, 
+                 MPI_UNSIGNED_CHAR,
+                 rank + 1,
+                 DEFAULT_TAG,
+                 MPI_COMM_WORLD,
+                 MPI_STATUS_IGNORE);
+      }
+
+    }
+
+    // Send computed image part to root process
+    send_image(img, 0, 0, img->height);
+  }
+
+  MPI_Finalize();
+  return 0;
+}
+
