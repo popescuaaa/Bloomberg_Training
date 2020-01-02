@@ -369,9 +369,7 @@ Image *receive_image(int source)
  *  for unsigned char values that goes above the max value.
  * 
  **/
-
-
-void apply_filter(Image *img, filter current_filter, int start_line, int end_line) {
+Image *apply_filter(Image *img, filter current_filter, int start_line, int end_line) {
   Image *result = img;
   
   if (img -> type == PGM)
@@ -389,7 +387,7 @@ void apply_filter(Image *img, filter current_filter, int start_line, int end_lin
                        if (i + offset_i == -1 || i + offset_i == img -> height ||
                            j + offset_j == -1 || j + offset_j == img -> width)
                         {
-                            result_pixel_value += 0;
+                            result_pixel_value += 0.0;
                         }
                        else
                         {
@@ -400,30 +398,34 @@ void apply_filter(Image *img, filter current_filter, int start_line, int end_lin
                    }
                }
 
-               
                 if (result_pixel_value > 255) 
                     result_pixel_value = 255;
                 if (result_pixel_value < 0) 
                     result_pixel_value = 0;
-        
+                    
+                printf("Sum: %f   ", result_pixel_value);
                 result -> image[i][j] = (unsigned char) result_pixel_value;
-                
+                printf("Before: %u:   After: %u \n", img -> image[i][j], result -> image[i][j]);
+            
             }   
         }
 
-        for (int i = 0; i < img -> height; i++)
-        {
-            for (int j = 0; j < img -> width; j++)
-            {
-                img -> image[i][j] = result -> image[i][j];
-            }
-        }
+        // for (int i = 0; i < img -> height; i++)
+        // {
+        //     for (int j = 0; j < img -> width; j++)
+        //     {
+        //         img -> image[i][j] = result -> image[i][j];
+        //     }
+        // }
+
+        return result;
   } 
   else 
   {
-
+      return NULL;
   }
-  
+
+ return NULL; 
 }
 
 
@@ -470,8 +472,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 3; i < argc; i++) 
     {
-      apply_filter(image, get_filter_by_name(argv[i]), start_line, end_line);
-
+      image = apply_filter(image, get_filter_by_name(argv[i]), start_line, end_line);
     }
 
 
@@ -507,14 +508,9 @@ int main(int argc, char *argv[]) {
 
     for (int i = 3; i < argc; i++) 
     {
-
-      apply_filter(img, get_filter_by_name(argv[i]), 0, img->height);
-
-
+      img = apply_filter(img, get_filter_by_name(argv[i]), 0, img->height);
     }
-
     send_image(img, 0, 0, img->height);
-    
   }
 
   MPI_Finalize();
