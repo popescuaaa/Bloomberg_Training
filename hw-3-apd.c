@@ -5,7 +5,6 @@
 #include <unistd.h>
 
 
-
 #define PGM 5
 #define PNM 6
 #define DEFAULT_TAG 0
@@ -187,17 +186,17 @@ Image *read_image(char *image_file_name)
         /**
          *  Read RGB pixels
          **/ 
-        pixel **pnm_content = (pixel **) malloc (image -> height * sizeof(pixel));
+        pixel **pnm_content = (pixel **) malloc (image -> height * sizeof(pixel *));
         for (int line = 0; line < image -> height; ++line)
         {
-            pnm_content[line] = (pixel *) malloc( image -> width * sizeof(pixel)); 
+            pnm_content[line] = (pixel *) malloc (image -> width * sizeof(pixel)); 
         }
         for (int line = 0; line < image -> height; ++line)
         {
             fread(pnm_content[line], sizeof(pixel), image -> width, fin);
         }
-
         image -> color_image = pnm_content;
+    
     }
 
     fclose(fin);
@@ -253,13 +252,12 @@ void write_image(Image *image, char *output_file_name)
     else
     {
          for (int line = 0; line < image -> height; ++line)
-        {
+         {
             fwrite(image -> color_image[line], sizeof(pixel), image -> width, fout);
-        }
+         }
     }
     
     fclose(fout);
-
     printf("\t\nThe result image has been writen in the current folder: %s\n", output_file_name);
 }
 
@@ -283,7 +281,6 @@ void write_image(Image *image, char *output_file_name)
  **/
 void send_image(Image *image, int destination, int start, int finish)
 {
-    printf("Send\n");
     int _height = finish - start;
     MPI_Send(&(image -> type), 1, MPI_INT, destination, DEFAULT_TAG, MPI_COMM_WORLD);
     MPI_Send(&(image -> width), 1, MPI_INT, destination, DEFAULT_TAG, MPI_COMM_WORLD);
@@ -315,13 +312,12 @@ void send_image(Image *image, int destination, int start, int finish)
  **/ 
 Image *receive_image(int source)
 {
-    printf("Received\n");
     Image *image = (Image *) malloc(sizeof(Image));
     MPI_Recv(&(image -> type), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     MPI_Recv(&(image -> width), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     MPI_Recv(&(image -> height), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     MPI_Recv(&(image -> max_val), 1, MPI_INT, source, DEFAULT_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
+    
     if (image -> type == PGM)
     {
         unsigned char **content = (unsigned char **) malloc(image -> height * sizeof(unsigned char *));
@@ -336,7 +332,7 @@ Image *receive_image(int source)
         }
         
         image -> image = content;
-    
+
     } 
     else
     {
@@ -352,6 +348,7 @@ Image *receive_image(int source)
         }
 
         image -> color_image = rgb_content;
+        
     }
     
     return image;
@@ -365,13 +362,13 @@ Image *receive_image(int source)
  *  Apply a specific filter on an image in a region delimited by on height 
  *  by start_line and end_line.
  *  It also ensure that there is no overflow or underflow during the matrix
- *  multiplication by clamping values to 0 for begative ones and to 255 
+ *  multiplication by clamping values to 0 for negative ones and to 255 
  *  for unsigned char values that goes above the max value.
  * 
  **/
 Image *apply_filter(Image *img, filter current_filter, int start_line, int end_line) {
-  Image *result = img;
-  
+  Image *result = malloc(sizeof(Image));
+  result = img;
   if (img -> type == PGM)
   {
         for (int i = start_line; i < end_line; i++) 
@@ -384,8 +381,8 @@ Image *apply_filter(Image *img, filter current_filter, int start_line, int end_l
                {
                    for(int offset_j = -1; offset_j <= 1; offset_j++)
                    {
-                       if (i + offset_i == -1 || i + offset_i == img -> height ||
-                           j + offset_j == -1 || j + offset_j == img -> width)
+                       if (i + offset_i < 0 || i + offset_i == img -> height ||
+                           j + offset_j < 0 || j + offset_j == img -> width)
                         {
                             result_pixel_value += 0.0;
                         }
@@ -393,43 +390,81 @@ Image *apply_filter(Image *img, filter current_filter, int start_line, int end_l
                         {
                             float image_pixel = (float) img -> image[i + offset_i][j + offset_j];
                             float filter_associated_value = current_filter.values[1 - offset_i][1 - offset_j];
-                            result_pixel_value += (image_pixel * filter_associated_value);  
+                            result_pixel_value += (filter_associated_value * image_pixel);  
                         }
                    }
                }
-
-                if (result_pixel_value > 255) 
-                    result_pixel_value = 255;
-                if (result_pixel_value < 0) 
-                    result_pixel_value = 0;
-                    
-                printf("Sum: %f   ", result_pixel_value);
+                if (result_pixel_value > 255)  result_pixel_value = 255;
+                if (result_pixel_value < 0)  result_pixel_value = 0;
+               
                 result -> image[i][j] = (unsigned char) result_pixel_value;
-                printf("Before: %u:   After: %u \n", img -> image[i][j], result -> image[i][j]);
-            
             }   
         }
-
-        // for (int i = 0; i < img -> height; i++)
-        // {
-        //     for (int j = 0; j < img -> width; j++)
-        //     {
-        //         img -> image[i][j] = result -> image[i][j];
-        //     }
-        // }
-
         return result;
   } 
   else 
   {
-      return NULL;
-  }
+      for (int i = start_line; i < end_line; i++) 
+        {
+            for (int j = 0; j < img -> width; j++)
+            {
+               float result_pixel_red = 0.0;
+               float result_pixel_green = 0.0;
+               float result_pixel_blue = 0.0;
+               
+               for (int offset_i = -1; offset_i <= 1; offset_i++)
+               {
+                   for(int offset_j = -1; offset_j <= 1; offset_j++)
+                   {
+                       if (i + offset_i == -1 || i + offset_i == img -> height ||
+                           j + offset_j == -1 || j + offset_j == img -> width)
+                        {
+                            result_pixel_red += 0.0;
+                            result_pixel_green += 0.0;
+                            result_pixel_blue += 0.0;
+                        }
+                       else
+                        {   
+                            pixel p = img -> color_image[i + offset_i][j + offset_j];
+                            float image_pixel_red = (float) p.red;
+                            float image_pixel_green = (float) p.green;
+                            float image_pixel_blue = (float) p.blue;
 
- return NULL; 
+                            float filter_associated_value = current_filter.values[1 - offset_i][1 - offset_j];
+                            result_pixel_red += (image_pixel_red * filter_associated_value);
+                            result_pixel_green += (image_pixel_green * filter_associated_value);
+                            result_pixel_blue += (image_pixel_blue * filter_associated_value);
+
+                        }
+                   }
+                }
+                if (result_pixel_red > 255) result_pixel_red = 255;
+                if (result_pixel_red < 0) result_pixel_red = 0;
+                if (result_pixel_green > 255) result_pixel_green = 255;
+                if (result_pixel_green < 0) result_pixel_green = 0;
+                if (result_pixel_blue > 255) result_pixel_blue = 255;
+                if (result_pixel_blue < 0) result_pixel_blue = 0;       
+                pixel result_pixel = 
+                {
+                    (unsigned char) result_pixel_red,
+                    (unsigned char) result_pixel_green,
+                    (unsigned char) result_pixel_blue
+                };
+                result->color_image[i][j] = result_pixel;
+           
+            }   
+        }
+        return result;
+  }
 }
 
 
-
+/**
+ * Main entry of the process that handles the image distribution 
+ * and the data gathering from all the slave processes.
+ * 
+ * 
+ **/ 
 int main(int argc, char *argv[]) {
 
   int rank;
@@ -444,14 +479,14 @@ int main(int argc, char *argv[]) {
     int start_line;
     int end_line;
 
-    if (argc < 4) {
+    if (argc < 4) 
+    {
       printf("\n\t Please provide at least 3 arguments for the executable: \n\t mpirun -np P ./executable image_in image_out filter_1 filter_2 ...\n Although the executable stop working the lamboot background daemon will continue to work \n\t please end it with Ctrl + C\n");
       exit(-1);
     }
 
-    Image *image = malloc(sizeof(Image));
-    image = read_image(argv[1]);
-    
+    Image *image = read_image(argv[1]);
+
     for (int i = 1; i < number_of_processes; i++) 
     {
       start_line = (i * image->height) / number_of_processes;
@@ -466,53 +501,49 @@ int main(int argc, char *argv[]) {
 
     start_line = 0;
     end_line = image->height / number_of_processes;
-
+   
     if (end_line != image->height)
       end_line++;
 
     for (int i = 3; i < argc; i++) 
     {
-      image = apply_filter(image, get_filter_by_name(argv[i]), start_line, end_line);
+      image = apply_filter(image, get_filter_by_name(argv[i]), start_line + 1, end_line - 1);
     }
-
-
+   
     for (int i = 1; i < number_of_processes; i++) 
     {
-
       start_line = (i * image->height) / number_of_processes;
       end_line = ((i + 1) * image->height) / number_of_processes;
-      
+    
       Image *img = receive_image(i);
-      free(img->image[0]);
 
       for (int j = start_line; j < end_line; j++) 
       {
-
-        free(image->image[j]);
-
-        image->image[j] = img->image[j - start_line + 1];
+        if (img -> type == PGM)
+        {
+            image->image[j] = img->image[j - start_line];
+        }
+        else
+        {
+            image->color_image[j] = img->color_image[j - start_line];
+        }
       }
-
-      for (int j = end_line - start_line + 2; j < img->height; j++)
-        free(img->image[j]);
-
-      free(img->image);
-      free(img);
     }
 
     write_image(image, argv[2]);
-
+   
   } else {
     
-    Image *img = receive_image(0);
+    Image *img = receive_image(MASTER);
 
     for (int i = 3; i < argc; i++) 
     {
-      img = apply_filter(img, get_filter_by_name(argv[i]), 0, img->height);
+      img = apply_filter(img, get_filter_by_name(argv[i]), 1, img->height - 1);
     }
+
     send_image(img, 0, 0, img->height);
   }
-
+  
   MPI_Finalize();
   return 0;
 }
