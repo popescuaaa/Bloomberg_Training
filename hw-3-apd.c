@@ -3,6 +3,7 @@
 #include <mpi.h>
 #include <string.h>
 #include <unistd.h>
+#include <math.h>
 
 
 #define PGM 5
@@ -87,13 +88,13 @@ const filter mean_removal =
     {
         { -1.0, -1.0, -1.0},
         { -1.0, 9.0, -1.0},
-        { 1.0 / 9.0, 1.0 / 9.0, 1.0 / 9.0}
+        { -1.0, -1.0, -1.0}
     }
 };
 
-const filter embross =
+const filter emboss =
 {
-    "embross",
+    "emboss",
     {
         { 0.0, 1.0, 0.0},
         { 0.0, 0.0, 0.0},
@@ -123,7 +124,7 @@ const filter get_filter_by_name(char *filter_name)
     if (strcmp(filter_name, "blur") == 0) return aproximative_gaussian_blur;
     if (strcmp(filter_name, "mean") == 0) return mean_removal;
     if (strcmp(filter_name, "sharpen") == 0) return sharpen;
-    if (strcmp(filter_name, "embross") == 0) return embross;
+    if (strcmp(filter_name, "emboss") == 0) return emboss;
 
     return default_filter;
 }
@@ -365,10 +366,55 @@ Image *receive_image(int source)
  *  multiplication by clamping values to 0 for negative ones and to 255 
  *  for unsigned char values that goes above the max value.
  * 
+ *  Basically I allocate a copy of the image that I receive from the input and 
+ *  then I modify it according to the rule explained poorly in the PDF :)
+ * 
+ * 
  **/
 Image *apply_filter(Image *img, filter current_filter, int start_line, int end_line) {
   Image *result = malloc(sizeof(Image));
-  result = img;
+  
+  unsigned char **r = (unsigned char **) malloc(img -> height * sizeof(unsigned char *));
+  for (int i = 0; i < img -> height; i++)
+  {
+      r[i] = (unsigned char *) malloc(img -> width * sizeof(unsigned char));
+  }
+
+  pixel **r_color = (pixel **) malloc(img -> height * sizeof(pixel *));
+  for (int i = 0; i < img -> height; i++)
+  {
+      r_color[i] = (pixel *) malloc(img -> width * sizeof(pixel));
+  }
+  
+  if (img -> type == PGM) {
+        for ( int i = 0; i < img -> height; i++)
+        {
+            for (int j = 0; j < img -> width; j++)
+            {
+                r[i][j] = img -> image[i][j];
+            }
+            
+        }
+    result -> image = r;
+  }
+  else
+  {
+       for ( int i = 0; i < img -> height; i++)
+        {
+            for (int j = 0; j < img -> width; j++)
+            {
+                r_color[i][j] = img -> color_image[i][j];
+            }
+        
+        }
+    result -> color_image = r_color;
+  }
+  
+  result -> width = img -> width;
+  result -> height = img -> height;
+  result -> max_val = img -> max_val;
+  result -> type = img -> type;
+
   if (img -> type == PGM)
   {
         for (int i = start_line; i < end_line; i++) 
@@ -376,7 +422,7 @@ Image *apply_filter(Image *img, filter current_filter, int start_line, int end_l
             for (int j = 0; j < img -> width; j++)
             {
                float result_pixel_value = 0.0;
-
+               
                for (int offset_i = -1; offset_i <= 1; offset_i++)
                {
                    for(int offset_j = -1; offset_j <= 1; offset_j++)
@@ -393,13 +439,15 @@ Image *apply_filter(Image *img, filter current_filter, int start_line, int end_l
                             result_pixel_value += (filter_associated_value * image_pixel);  
                         }
                    }
-               }
+                }
+
                 if (result_pixel_value > 255)  result_pixel_value = 255;
                 if (result_pixel_value < 0)  result_pixel_value = 0;
                
                 result -> image[i][j] = (unsigned char) result_pixel_value;
             }   
         }
+
         return result;
   } 
   else 
@@ -454,6 +502,7 @@ Image *apply_filter(Image *img, filter current_filter, int start_line, int end_l
            
             }   
         }
+        
         return result;
   }
 }
@@ -474,8 +523,8 @@ int main(int argc, char *argv[]) {
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
   MPI_Comm_size(MPI_COMM_WORLD, &number_of_processes);
 
-  if (rank == MASTER) {
-    
+  if (rank == MASTER) 
+  {
     int start_line;
     int end_line;
 
@@ -486,62 +535,113 @@ int main(int argc, char *argv[]) {
     }
 
     Image *image = read_image(argv[1]);
-
-    for (int i = 1; i < number_of_processes; i++) 
-    {
-      start_line = (i * image->height) / number_of_processes;
-      end_line = ((i + 1) * image->height) / number_of_processes;
-
-      start_line -= 1;
-      if (i != number_of_processes - 1)
-        end_line++;
-
-      send_image(image, i, start_line, end_line);
-    }
-
-    start_line = 0;
-    end_line = image->height / number_of_processes;
-   
-    if (end_line != image->height)
-      end_line++;
-
+    Image *out = read_image(argv[1]);
+    
     for (int i = 3; i < argc; i++) 
     {
-      image = apply_filter(image, get_filter_by_name(argv[i]), start_line + 1, end_line - 1);
-    }
-   
-    for (int i = 1; i < number_of_processes; i++) 
-    {
-      start_line = (i * image->height) / number_of_processes;
-      end_line = ((i + 1) * image->height) / number_of_processes;
-    
-      Image *img = receive_image(i);
+       
+        int mul_factor = (int)ceil((1.0 * image -> height) / number_of_processes);
+        int low_bound = mul_factor * rank;
+        int high_bound= (int)fmin(mul_factor * (rank + 1), image -> height);
+        
+        int start_line_master = low_bound;
+        int end_line_master = high_bound;
 
-      for (int j = start_line; j < end_line; j++) 
-      {
-        if (img -> type == PGM)
+        if (number_of_processes == 1)
         {
-            image->image[j] = img->image[j - start_line];
+            end_line_master = image -> height;
+        }
+        
+         /**
+         *  Copy the content of the current image received from read_image funstion
+         *  into the out image receiver buffer wich will be the working one during 
+         *  filtering process.
+         * 
+         **/ 
+        if (image -> type == PGM)
+        {
+            for ( int i = 0; i < image -> height; i++)
+            {
+                for (int j = 0; j < image -> width; j++)
+                {
+                    image -> image[i][j] = out -> image[i][j];
+                }
+            
+            }
         }
         else
         {
-            image->color_image[j] = img->color_image[j - start_line];
+            for ( int i = 0; i < image -> height; i++)
+            {
+                for (int j = 0; j < image -> width; j++)
+                {
+                    image -> color_image[i][j] = out -> color_image[i][j];
+                }
+            
+            }
         }
-      }
+        
+
+        for (int i = 1; i < number_of_processes; i++) 
+        {
+            start_line = 0;
+            end_line = image->height;
+            send_image(image, i, start_line, end_line);
+        }
+
+        out = apply_filter(image, get_filter_by_name(argv[i]), start_line_master, end_line_master);
+    
+        for (int i = 1; i < number_of_processes; i++) 
+        {
+            int mul_factor_i = (int)ceil((1.0 * image -> height) / number_of_processes);
+            int low_bound_i = mul_factor * i;
+            int high_bound_i = (int)fmin(mul_factor * (i + 1), image -> height);
+
+            start_line = low_bound_i;
+            end_line = high_bound_i;
+            
+            Image *img = receive_image(i);
+
+            for (int j = start_line; j < end_line; j++) 
+            {
+                if (img -> type == PGM)
+                {
+                    out->image[j] = img->image[j];
+                }
+                else
+                {
+                    out->color_image[j] = img->color_image[j];
+                }
+            }
+        }
     }
 
-    write_image(image, argv[2]);
+    write_image(out, argv[2]);
    
   } else {
     
-    Image *img = receive_image(MASTER);
-
+    Image *img;
+    Image *out_slave;
+    
     for (int i = 3; i < argc; i++) 
     {
-      img = apply_filter(img, get_filter_by_name(argv[i]), 1, img->height - 1);
-    }
+      img = receive_image(MASTER);
+      
+      int mul_factor = (int)ceil((1.0 * img -> height) / number_of_processes);
+      int low_bound = mul_factor * rank;
+      int high_bound= (int)fmin(mul_factor * (rank + 1), img -> height);
 
-    send_image(img, 0, 0, img->height);
+      int start_line_slave = low_bound;
+      int end_line_slave = high_bound;
+      
+      if (rank == number_of_processes - 1)
+      {
+          end_line_slave = img -> height;
+      }
+
+      out_slave = apply_filter(img, get_filter_by_name(argv[i]), start_line_slave, end_line_slave);
+      send_image(out_slave, 0, 0, img -> height);
+    }
   }
   
   MPI_Finalize();

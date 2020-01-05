@@ -174,17 +174,47 @@ void write_image(Image *image, char *output_file_name)
  **/ 
 int main(int argc, char *argv[])
 {
+    Image *before = read_image(argv[3]);
     Image *in = read_image(argv[1]);
     Image *ref = read_image(argv[2]);
-    for (int i = 0; i < in -> height; i++)
+
+    for (int i = in -> height /4; i < (in -> height /4 ) + 3; i++)
     {
-        for (int j = 0; j < in -> width; j++)
+        for (int j = in -> width / 2; j < (in -> width / 2) + 3; j++)
         {
-            if (in -> image[i][j] != ref -> image[i][j])
-            {
-                printf("In: %u Ref: %u\n\n", in -> image[i][j], ref -> image[i][j]);
-            }
+            printf("%u ", in -> image[i][j]);
         }
+        printf("\n");
     }
+
+    
+     for (int i = in -> height / 4; i < (in -> height /4 ) + 3; i++)
+    {
+        for (int j = in -> width / 2; j < (in -> width / 2) + 3; j++)
+        {
+            printf("%u ", ref -> image[i][j]);
+        }
+        printf("\n");
+    }
+
+     for (int i = in -> height / 4; i < (in -> height /4 ) + 3; i++)
+    {
+        for (int j = in -> width / 2; j < (in -> width / 2) + 3; j++)
+        {
+            printf("%u ", before -> image[i][j]);
+        }
+        printf("\n");
+    }
+
+    // for (int i = 0; i < in -> height; i++)
+    // {
+    //     for (int j = 0; j < in -> width; j++)
+    //     {
+    //         if (in -> image[i][j] != ref -> image[i][j])
+    //         {
+    //             printf("In: %u Ref: %u\n\n", in -> image[i][j], ref -> image[i][j]);
+    //         }
+    //     }
+    // }
     return 0;
 }
