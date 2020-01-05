@@ -42,7 +42,7 @@ Considering the fact that thre network is obviously imperfect and has a consiten
 
 The scalability was tested with a python script that call the process for all filter and all numbers of processes, in my case
 there is a small list of [1,2,3,4] because more than 4 processes will be performed in switch mode by the OS and it has a bad delay
-and finally the script analysis with a liniar time plot the scale factor almost 0.7 in my case. Here are a couple of tests on scalability:
+and finally the script analysis with a liniar time plot the scale factor almost 0.8 in my case. Here are a couple of tests on scalability:
 
 # for a single process one exemple (the tests were made on average)
 
