@@ -575,9 +575,9 @@ int main(int argc, char *argv[]) {
     for (int i = 3; i < argc; i++) 
     {
        
-        int mul_factor = (int)ceil((1.0 * image -> height) / number_of_processes);
-        int low_bound = mul_factor * rank;
-        int high_bound= (int)fmin(mul_factor * (rank + 1), image -> height);
+        int division_ratio = (int)ceil((1.0 * image -> height) / number_of_processes);
+        int low_bound = division_ratio * rank;
+        int high_bound= (int)fmin(division_ratio * (rank + 1), image -> height);
         
         int start_line_master = low_bound;
         int end_line_master = high_bound;
@@ -629,9 +629,9 @@ int main(int argc, char *argv[]) {
     
         for (int i = 1; i < number_of_processes; i++) 
         {
-            int mul_factor_i = (int)ceil((1.0 * image -> height) / number_of_processes);
-            int low_bound_i = mul_factor * i;
-            int high_bound_i = (int)fmin(mul_factor * (i + 1), image -> height);
+            int division_ration_i = (int)ceil((1.0 * image -> height) / number_of_processes);
+            int low_bound_i = division_ratio_i * i;
+            int high_bound_i = (int)fmin(division_ration_i * (i + 1), image -> height);
 
             start_line = low_bound_i;
             end_line = high_bound_i;
@@ -663,9 +663,9 @@ int main(int argc, char *argv[]) {
     {
       img = receive_image(MASTER);
       
-      int mul_factor = (int)ceil((1.0 * img -> height) / number_of_processes);
-      int low_bound = mul_factor * rank;
-      int high_bound= (int)fmin(mul_factor * (rank + 1), img -> height);
+      int divion_ratio = (int)ceil((1.0 * img -> height) / number_of_processes);
+      int low_bound = divion_ratio * rank;
+      int high_bound= (int)fmin(divion_ratio * (rank + 1), img -> height);
 
       int start_line_slave = low_bound;
       int end_line_slave = high_bound;
