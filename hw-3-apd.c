@@ -5,11 +5,20 @@
 #include <unistd.h>
 #include <math.h>
 
+/**
+ *  Local constant values area
+ **/ 
 
 #define PGM 5
 #define PNM 6
 #define DEFAULT_TAG 0
 #define MASTER 0
+
+/**
+ *  End constant values area 
+ **/ 
+
+/****************************************************************************************************/
 
 /**
  *  Type definitions
@@ -47,9 +56,14 @@ typedef struct
 
 } filter;
 
+/**
+ *  End type definitions 
+ **/ 
+
+/****************************************************************************************************/
 
 /**
- *  Const values
+ *  External constan values area
  *  ~ Filters ~  
  **/ 
 const filter smooth = 
@@ -113,6 +127,12 @@ const filter default_filter =
 };
 
 /**
+ * End external constant values area
+ **/ 
+
+/****************************************************************************************************/
+
+/**
  * @param: filter_name 
  * The function return based on name, the associated filter struct.
  * It handle also non-valid filter names.
@@ -128,6 +148,8 @@ const filter get_filter_by_name(char *filter_name)
 
     return default_filter;
 }
+
+/****************************************************************************************************/
 
 /**
  * @param: image_file_name
@@ -203,6 +225,9 @@ Image *read_image(char *image_file_name)
     fclose(fin);
     return image;
 }
+
+/****************************************************************************************************/
+
 /**
  * @param: image
  * @param: output_file_name
@@ -262,6 +287,8 @@ void write_image(Image *image, char *output_file_name)
     printf("\t\nThe result image has been writen in the current folder: %s\n", output_file_name);
 }
 
+/****************************************************************************************************/
+
 /**
  *  The following functions repesent the API that handles the processes reposnse
  *  and action to specific images, so basically the image processing parallel API.
@@ -302,6 +329,8 @@ void send_image(Image *image, int destination, int start, int finish)
         }
     }
 }
+
+/****************************************************************************************************/
 
 /**
  * @param: source
@@ -354,6 +383,9 @@ Image *receive_image(int source)
     
     return image;
 }
+
+/****************************************************************************************************/
+
 /**
  *  @param: image
  *  @param: filter
@@ -372,6 +404,7 @@ Image *receive_image(int source)
  * 
  **/
 Image *apply_filter(Image *img, filter current_filter, int start_line, int end_line) {
+  
   Image *result = malloc(sizeof(Image));
   
   unsigned char **r = (unsigned char **) malloc(img -> height * sizeof(unsigned char *));
@@ -507,6 +540,7 @@ Image *apply_filter(Image *img, filter current_filter, int start_line, int end_l
   }
 }
 
+/****************************************************************************************************/
 
 /**
  * Main entry of the process that handles the image distribution 
@@ -514,6 +548,7 @@ Image *apply_filter(Image *img, filter current_filter, int start_line, int end_l
  * 
  * 
  **/ 
+
 int main(int argc, char *argv[]) {
 
   int rank;
@@ -558,6 +593,7 @@ int main(int argc, char *argv[]) {
          *  filtering process.
          * 
          **/ 
+
         if (image -> type == PGM)
         {
             for ( int i = 0; i < image -> height; i++)
@@ -647,3 +683,5 @@ int main(int argc, char *argv[]) {
   MPI_Finalize();
   return 0;
 }
+
+/****************************************************************************************************/
