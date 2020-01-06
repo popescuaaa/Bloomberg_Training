@@ -1,4 +1,6 @@
 # Homework 3 APD Popescu Andrei Gabriel 333CA 
+> ![GitHub Logo](/images/logo.png)
+Format: ![Alt Text](url)
 
 ## The homework consist of a process of read and write applied to an image, process which is intermediate by a a multitude of distributed matrix operations for filtering with a const specificied 3 * 3 2d array called 'filter'
 
