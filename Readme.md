@@ -1,6 +1,6 @@
 # Homework 3 APD Popescu Andrei Gabriel 333CA 
-> ![GitHub Logo](https://www.google.com/search?q=distributed+algorithms&source=lnms&tbm=isch&sa=X&ved=2ahUKEwij1fTu3-7mAhWwRBUIHYVlBwQQ_AUoAXoECAsQAw&biw=1152&bih=916#imgrc=64limiGdDpinFM:)
-Format: ![Alt Text](url)
+
+![Image of Yaktocat](https://octodex.github.com/images/adventure-cat.png)
 
 ## The homework consist of a process of read and write applied to an image, process which is intermediate by a a multitude of distributed matrix operations for filtering with a const specificied 3 * 3 2d array called 'filter'
 
