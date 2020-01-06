@@ -629,9 +629,9 @@ int main(int argc, char *argv[]) {
     
         for (int i = 1; i < number_of_processes; i++) 
         {
-            int division_ration_i = (int)ceil((1.0 * image -> height) / number_of_processes);
+            int division_ratio_i = (int)ceil((1.0 * image -> height) / number_of_processes);
             int low_bound_i = division_ratio_i * i;
-            int high_bound_i = (int)fmin(division_ration_i * (i + 1), image -> height);
+            int high_bound_i = (int)fmin(division_ratio_i * (i + 1), image -> height);
 
             start_line = low_bound_i;
             end_line = high_bound_i;
@@ -653,7 +653,34 @@ int main(int argc, char *argv[]) {
     }
 
     write_image(out, argv[2]);
-   
+    for (int i = 0; i < image -> height; i++)
+    {
+        if (image -> type == PGM)
+        {
+            free(image -> image[i]);
+        }
+        else
+        {
+            free(image -> color_image[i]);
+        }  
+        
+    }
+    for (int i = 0; i < image -> height; i++)
+    {
+        if (image -> type == PGM)
+        {
+            free(out -> image[i]);
+        }
+        else
+        {
+            free(out -> color_image[i]);
+        }  
+        
+    }
+
+    free(image);
+    free(out);
+
   } else {
     
     Image *img;
@@ -678,9 +705,40 @@ int main(int argc, char *argv[]) {
       out_slave = apply_filter(img, get_filter_by_name(argv[i]), start_line_slave, end_line_slave);
       send_image(out_slave, 0, 0, img -> height);
     }
+
+     for (int i = 0; i < img -> height; i++)
+    {
+        if (img -> type == PGM)
+        {
+            free(img -> image[i]);
+        }
+        else
+        {
+            free(img -> color_image[i]);
+        }  
+        
+    }
+
+    for (int i = 0; i < out_slave -> height; i++)
+    {
+        if (out_slave -> type == PGM)
+        {
+            free(out_slave -> image[i]);
+        }
+        else
+        {
+            free(out_slave -> color_image[i]);
+        }  
+        
+    }
+    
+    free(img);
+    free(out_slave);
+
   }
   
   MPI_Finalize();
+
   return 0;
 }
 
