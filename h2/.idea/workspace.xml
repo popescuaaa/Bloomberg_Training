@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="064fe9e8-173b-49c5-a1c3-e9f6fbd58870" name="Default Changelist" comment="" />
+    <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ProjectId" id="1TNwJNDsFB9jSBttLL55iJIv3aa" />
+  <component name="PropertiesComponent">
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="aspect.path.notification.shown" value="true" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../Laborator 6" />
+    <property name="node.js.detected.package.eslint" value="true" />
+    <property name="node.js.detected.package.tslint" value="true" />
+    <property name="node.js.path.for.package.eslint" value="project" />
+    <property name="node.js.path.for.package.tslint" value="project" />
+    <property name="node.js.selected.package.eslint" value="(autodetect)" />
+    <property name="node.js.selected.package.tslint" value="(autodetect)" />
+  </component>
+  <component name="RunDashboard">
+    <option name="ruleStates">
+      <list>
+        <RuleState>
+          <option name="name" value="ConfigurationTypeDashboardGroupingRule" />
+        </RuleState>
+        <RuleState>
+          <option name="name" value="StatusDashboardGroupingRule" />
+        </RuleState>
+      </list>
+    </option>
+  </component>
+  <component name="RunManager">
+    <configuration name="Homework" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="Homework" />
+      <module name="Tema2" />
+      <option name="PROGRAM_PARAMETERS" value="test_cases/test01 100000 2 1" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.Homework" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="064fe9e8-173b-49c5-a1c3-e9f6fbd58870" name="Default Changelist" comment="" />
+      <created>1573313787759</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1573313787759</updated>
+      <workItem from="1573313790750" duration="254000" />
+      <workItem from="1573314088240" duration="184000" />
+      <workItem from="1573315005706" duration="2707000" />
+      <workItem from="1573319767878" duration="592000" />
+      <workItem from="1573755746690" duration="9161000" />
+      <workItem from="1573832902833" duration="47000" />
+      <workItem from="1573844865788" duration="71000" />
+      <workItem from="1573845045925" duration="649000" />
+      <workItem from="1573896344110" duration="40079000" />
+      <workItem from="1574101196629" duration="9785000" />
+      <workItem from="1574183586629" duration="674000" />
+      <workItem from="1574370212914" duration="392000" />
+      <workItem from="1574621904949" duration="1620000" />
+      <workItem from="1578672454321" duration="458000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="1" />
+  </component>
+</project>
